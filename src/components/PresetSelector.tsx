@@ -35,7 +35,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   onIntensityChange,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'classic' | 'master' | 'special'>('classic');
+  const [selectedCategory, setSelectedCategory] = useState<'classic' | 'master' | 'special'>('special');
 
   // Synchronize category tab when preset changes
   useEffect(() => {
@@ -63,9 +63,9 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   }, [activePreset.id, splitPresetLeft.id, splitPresetRight.id, splitMode, selectedSplitSide, selectedCategory]);
 
   const categories = [
+    { id: 'special', labelZh: '特调', labelEn: 'Special', icon: '💄' },
     { id: 'classic', labelZh: '经典', labelEn: 'Classic', icon: '✨' },
     { id: 'master', labelZh: '氛围', labelEn: 'Ambient', icon: '🔮' },
-    { id: 'special', labelZh: '特调', labelEn: 'Special', icon: '💄' },
   ] as const;
 
   const intensities = [
@@ -84,7 +84,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
     <div className="w-full flex flex-col gap-1.5 px-2 py-2 select-none text-left">
       
       {/* ⚡ COMBINED DUAL CONTROLLER HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-1.5 pb-1.5 mb-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-start gap-1.5 pb-1.5 mb-1.5">
         
         {/* Right Part: Style Category Selector */}
         <div className="flex items-center gap-1.5">

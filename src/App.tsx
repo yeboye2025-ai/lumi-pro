@@ -401,12 +401,13 @@ const AMB_SCENARIOS: AmbientScenario[] = [
 
 export default function App() {
   // Primary States
-  const [activePreset, setActivePreset] = useState<FillLightPreset>(FILL_LIGHT_PRESETS[0]);
+  const specialPresetsList = FILL_LIGHT_PRESETS.filter(p => p.category === 'special');
+  const [activePreset, setActivePreset] = useState<FillLightPreset>(specialPresetsList[0] || FILL_LIGHT_PRESETS[0]);
   const [isLightSelected, setIsLightSelected] = useState<boolean>(false);
   const [immersiveMode, setImmersiveMode] = useState<boolean>(false);
   const [splitMode, setSplitMode] = useState<SplitMode>('none');
-  const [splitPresetLeft, setSplitPresetLeft] = useState<FillLightPreset>(FILL_LIGHT_PRESETS[1]); // 初恋粉
-  const [splitPresetRight, setSplitPresetRight] = useState<FillLightPreset>(FILL_LIGHT_PRESETS[2]); // 冷白皮
+  const [splitPresetLeft, setSplitPresetLeft] = useState<FillLightPreset>(specialPresetsList[1] || FILL_LIGHT_PRESETS[1]); 
+  const [splitPresetRight, setSplitPresetRight] = useState<FillLightPreset>(specialPresetsList[2] || FILL_LIGHT_PRESETS[2]); 
   const [selectedSplitSide, setSelectedSplitSide] = useState<'left' | 'right'>('left');
 
   const [brightness, setBrightness] = useState<number>(0.80); // 15% to 100%
@@ -2092,15 +2093,8 @@ export default function App() {
       ctx.drawImage(img, 0, 0, width, height);
       ctx.restore();
 
-      // 2. Mist smoothing bloom blur layer
-      if (photo.softness > 0.1) {
-        ctx.save();
-        ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost}) blur(6px)`;
-        ctx.globalAlpha = photo.softness * 0.38;
-        ctx.globalCompositeOperation = 'screen';
-        ctx.drawImage(img, 0, 0, width, height);
-        ctx.restore();
-      }
+      // 2. Mist smoothing bloom blur layer removed to preserve maximum sharpness without hazy/blurry texture
+
 
       // 4. Premium Under-eye & shadow corrector vector glow mix-blend-overlay
       ctx.save();
@@ -2170,14 +2164,8 @@ export default function App() {
     ctx.drawImage(img, 0, 0, width, height);
     ctx.restore();
 
-    if (photo.softness > 0.1) {
-      ctx.save();
-      ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost}) blur(6px)`;
-      ctx.globalAlpha = photo.softness * 0.38;
-      ctx.globalCompositeOperation = 'screen';
-      ctx.drawImage(img, 0, 0, width, height);
-      ctx.restore();
-    }
+    // Mist smoothing bloom blur layer removed to preserve maximum sharpness without hazy/blurry texture
+
 
     ctx.save();
     ctx.globalCompositeOperation = 'overlay';
@@ -2927,22 +2915,7 @@ export default function App() {
                   />
                 )}
 
-                {/* Diffuse mist blur dynamic layer */}
-                {!showOriginal && photoToRender && (
-                  <div 
-                    className="absolute inset-0 pointer-events-none mix-blend-screen opacity-100 transition-opacity duration-300 animate-fade-in"
-                    style={{
-                      opacity: (photoToRender.softness || 0.65) * 0.35,
-                    }}
-                  >
-                    <img
-                      src={photoToRender.photoUrl || "/src/assets/images/portrait_simulate_1779326784414.png"}
-                      alt=""
-                      style={getPhotoStyleFilter(photoToRender)}
-                      className="w-full h-full object-cover blur-[5px] saturate-108"
-                    />
-                  </div>
-                )}
+
 
               </div>
 

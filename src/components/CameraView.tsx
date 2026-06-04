@@ -84,8 +84,40 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
   useImperativeHandle(ref, () => ({
     capture: async () => {
       const canvas = document.createElement('canvas');
-      const width = 1080;
-      const height = 1440;
+      let width = 1080;
+      let height = 1440;
+
+      // Base video source sizing detection for pixel-perfect HD outputs
+      if (cameraState === 'active' && !useSimulatedPortrait && videoRef.current) {
+        const video = videoRef.current;
+        const videoW = video.videoWidth;
+        const videoH = video.videoHeight;
+        if (videoW && videoH) {
+          const targetAspect = 3 / 4; // 0.75
+          const videoAspect = videoW / videoH;
+          if (videoAspect > targetAspect) {
+            // Wider stream: match height to videoH, crop width
+            height = videoH;
+            width = Math.round(videoH * targetAspect);
+          } else {
+            // Taller stream: match width to videoW, crop height
+            width = videoW;
+            height = Math.round(videoW / targetAspect);
+          }
+        }
+      } else {
+        // High fidelity fallback matching physical dimensions
+        width = 1440;
+        height = 1920;
+      }
+
+      // Enforce premium size floor (ensure we never output a small compressed thumbnail)
+      if (width < 1080) {
+        const scaleFactor = 1080 / width;
+        width = 1080;
+        height = Math.round(height * scaleFactor);
+      }
+
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
@@ -107,7 +139,7 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
         
         if (videoW && videoH) {
           // Centered crop (simulate object-cover) to maintain original aspect ratio without stretching
-          const targetAspect = width / height; // 3:4 = 0.75
+          const targetAspect = width / height;
           const videoAspect = videoW / videoH;
           
           let sx = 0;
@@ -116,15 +148,16 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
           let sHeight = videoH;
           
           if (videoAspect > targetAspect) {
-            // Video is wider than 3:4 -> Crop horizontally
             sWidth = videoH * targetAspect;
             sx = (videoW - sWidth) / 2;
           } else {
-            // Video is taller than 3:4 -> Crop vertically
             sHeight = videoW / targetAspect;
             sy = (videoH - sHeight) / 2;
           }
           
+          // Use high quality image smoothing
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, width, height);
         } else {
           ctx.drawImage(video, 0, 0, width, height);
@@ -159,6 +192,8 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
             sy = (imgH - sHeight) / 2;
           }
           
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, width, height);
         } else {
           ctx.drawImage(img, 0, 0, width, height);
@@ -166,7 +201,8 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
         ctx.restore();
       }
 
-      return canvas.toDataURL('image/jpeg', 0.96);
+      // Output at absolute maximum quality 0.99 (essentially pristine uncompressed JPEG)
+      return canvas.toDataURL('image/jpeg', 0.99);
     }
   }));
 
