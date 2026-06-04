@@ -2253,6 +2253,27 @@ export default function App() {
     }
   };
 
+  const getPhotoStyleFilter = (photo: any) => {
+    if (!photo) return {};
+    const brightnessVal = photo.brightness ?? 0.8;
+    const softnessVal = photo.softness ?? 0.5;
+    const intensityLvl = photo.intensityLevel ?? 'normal';
+
+    const intensityModifier = 
+      intensityLvl === 'soft' ? -0.06 :
+      intensityLvl === 'normal' ? 0 :
+      intensityLvl === 'rich' ? 0.08 :
+      0.16;
+
+    const contrastPct = 96 - (softnessVal - 0.5) * 8;
+    const saturatePct = 103 + (brightnessVal - 0.5) * 6;
+    const exposureBoost = 1.05 + (brightnessVal - 0.5) * 0.28 + intensityModifier;
+
+    return {
+      filter: `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`,
+    };
+  };
+
   const getViewfinderStyle = () => {
     const shadowIntensityMultiplier = 
       intensityLevel === 'soft' ? 0.35 :
@@ -2539,7 +2560,7 @@ export default function App() {
               </div>
             ) : (
               /* 🎨 EXPANDED HIGH-FIDELITY ATMOSPHERE DECK */
-              <div className="w-full bg-black/45 border border-white/10 rounded-2xl p-3 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 animate-fade-in text-sans">
+              <div className="w-full bg-black/45 border border-white/10 rounded-2xl p-3 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 max-h-[330px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent animate-fade-in text-sans">
                 
                 {/* Header: Title */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -2866,17 +2887,50 @@ export default function App() {
                 <img
                   src={photoToRender?.photoUrl || "/src/assets/images/portrait_simulate_1779326784414.png"}
                   alt="Captured Portrait"
+                  style={!showOriginal && photoToRender ? getPhotoStyleFilter(photoToRender) : {}}
                   className={`w-full h-full object-cover transition-all duration-300 ${
-                    showOriginal ? 'filter none scale-100 opacity-90' : 'filter saturate-105 scale-102'
+                    showOriginal ? 'scale-100 opacity-90' : 'scale-102'
                   }`}
                 />
                 
+                {/* Gentle ambient color light bounce projection overlay on photo viewer */}
+                {!showOriginal && photoToRender && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none mix-blend-color transition-opacity duration-300 z-15"
+                    style={{
+                      background: photoToRender.splitMode === 'none' || !photoToRender.splitMode
+                        ? `radial-gradient(circle at 50% 45%, ${photoToRender.presetColor || '#FFFFFF'}db 0%, transparent 68%)`
+                        : `linear-gradient(to right, ${photoToRender.splitLeftColor || '#FFFFFF'}bf 0%, rgba(255,255,255,0.2) 50%, ${photoToRender.splitRightColor || '#FFFFFF'}bf 100%)`,
+                      opacity: (photoToRender.brightness ?? 0.8) * 0.08 * (
+                        photoToRender.intensityLevel === 'soft' ? 0.45 :
+                        photoToRender.intensityLevel === 'normal' ? 1.0 :
+                        photoToRender.intensityLevel === 'rich' ? 1.70 :
+                        2.50
+                      ),
+                    }}
+                  />
+                )}
 
+                {/* Subtle skin smoothing glow halo booster on photo viewer */}
+                {!showOriginal && photoToRender && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none mix-blend-soft-light transition-opacity duration-500 z-12"
+                    style={{
+                      background: 'linear-gradient(210deg, rgba(255,255,255,0.4) 0%, transparent 70%)',
+                      opacity: (photoToRender.brightness ?? 0.8) * 0.2 * (
+                        photoToRender.intensityLevel === 'soft' ? 0.6 :
+                        photoToRender.intensityLevel === 'normal' ? 1.0 :
+                        photoToRender.intensityLevel === 'rich' ? 1.5 :
+                        2.1
+                      ),
+                    }}
+                  />
+                )}
 
                 {/* Diffuse mist blur dynamic layer */}
                 {!showOriginal && photoToRender && (
                   <div 
-                    className="absolute inset-0 pointer-events-none mix-blend-screen opacity-0 transition-opacity duration-300 animate-fade-in"
+                    className="absolute inset-0 pointer-events-none mix-blend-screen opacity-100 transition-opacity duration-300 animate-fade-in"
                     style={{
                       opacity: (photoToRender.softness || 0.65) * 0.35,
                     }}
@@ -2884,6 +2938,7 @@ export default function App() {
                     <img
                       src={photoToRender.photoUrl || "/src/assets/images/portrait_simulate_1779326784414.png"}
                       alt=""
+                      style={getPhotoStyleFilter(photoToRender)}
                       className="w-full h-full object-cover blur-[5px] saturate-108"
                     />
                   </div>

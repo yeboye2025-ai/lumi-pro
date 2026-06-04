@@ -186,14 +186,36 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
 
     async function startCamera() {
       try {
+        // High-definition standard constraints are natively supported by almost all cameras, preventing blurry 3:4 portrait fallbacks.
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
-            width: { ideal: 1080 },
-            height: { ideal: 1440 }, // Front selfie optimized portrait aspect
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
           },
           audio: false,
         });
+
+        // Apply optical autofocus tracks if supported by the hardware constraints model
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        if (videoTrack) {
+          try {
+            const capabilities = (videoTrack as any).getCapabilities?.() || {};
+            const advancedConstraints: any = {};
+            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+              advancedConstraints.focusMode = 'continuous';
+            }
+            if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
+              advancedConstraints.exposureMode = 'continuous';
+            }
+            if (Object.keys(advancedConstraints).length > 0) {
+              await videoTrack.applyConstraints({ advanced: [advancedConstraints] });
+            }
+          } catch (e) {
+            console.warn('Autofocus constraint not accepted by hardware:', e);
+          }
+        }
+
         activeStream = mediaStream;
         setStream(mediaStream);
         setCameraState('active');
