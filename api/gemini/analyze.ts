@@ -63,7 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       v.includes("your_key") ||
       v === "sk-xxxx" ||
       v === "ep-xxxxxxxxxxxx" ||
-      v.includes("xxxxxx")
+      v.includes("xxxxxx") ||
+      (v.startsWith("ep-") && v.includes("xxx"))
     );
   };
 
@@ -88,8 +89,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const cleanModel = (model || "").trim();
   const provRaw = (provider || "gemini").toLowerCase();
+
+  // Align activeModel selection logic here to verify placeholder correctly
+  let activeModelForVerify = cleanModel;
+  if (activeModelForVerify === "gemini-2.5-flash" && provRaw !== "gemini" && provRaw !== "openrouter") {
+    activeModelForVerify = "";
+  }
+
   const isDoubao = provRaw === "doubao" || (apiEndpoint || "").toLowerCase().includes("volces.com") || (apiEndpoint || "").toLowerCase().includes("volcengine");
-  const modelToVerify = cleanModel || (isDoubao ? "ep-xxxxxxxxxxxx" : "");
+  const modelToVerify = activeModelForVerify || (isDoubao ? "ep-xxxxxxxxxxxx" : "");
 
   if (isPlaceholderValue(modelToVerify) && modelToVerify !== "") {
     const doubaoFallback = {

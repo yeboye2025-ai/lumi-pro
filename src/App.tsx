@@ -403,7 +403,23 @@ const AMB_SCENARIOS: AmbientScenario[] = [
 export default function App() {
   // Primary States
   const specialPresetsList = FILL_LIGHT_PRESETS.filter(p => p.category === 'special');
-  const [activePreset, setActivePreset] = useState<FillLightPreset>(specialPresetsList[0] || FILL_LIGHT_PRESETS[0]);
+  const [activePreset, setActivePreset] = useState<FillLightPreset>(() => {
+    try {
+      const saved = localStorage.getItem('lumi_user_preferences');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const lastId = parsed.lastSelectedPresetId;
+        if (lastId) {
+          const matched = FILL_LIGHT_PRESETS.find(p => p.id === lastId);
+          if (matched) return matched;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse saved preference for activePreset', e);
+    }
+    const defaultPreset = FILL_LIGHT_PRESETS.find(p => p.id === 'special_cold_white');
+    return defaultPreset || FILL_LIGHT_PRESETS[0];
+  });
   const [isLightSelected, setIsLightSelected] = useState<boolean>(false);
   const [immersiveMode, setImmersiveMode] = useState<boolean>(false);
   const [splitMode, setSplitMode] = useState<SplitMode>('none');
@@ -493,7 +509,7 @@ export default function App() {
            autoApply: parsed.autoApply ?? true,
            styleMode: parsed.styleMode || 'natural',
            sceneMemory: parsed.sceneMemory || {},
-           lastSelectedPresetId: parsed.lastSelectedPresetId || '',
+           lastSelectedPresetId: parsed.lastSelectedPresetId || 'special_cold_white',
            consecutiveCount: parsed.consecutiveCount ?? 0,
          };
        }
@@ -509,7 +525,7 @@ export default function App() {
        autoApply: true,
        styleMode: 'natural',
        sceneMemory: {},
-       lastSelectedPresetId: '',
+       lastSelectedPresetId: 'special_cold_white',
        consecutiveCount: 0,
     };
   });
@@ -522,6 +538,19 @@ export default function App() {
       console.error('Failed to save user preferences', e);
     }
   }, [preferences]);
+
+  // Sync activePreset change to preferences.lastSelectedPresetId for user habits
+  useEffect(() => {
+    if (activePreset) {
+      setPreferences(prev => {
+        if (prev.lastSelectedPresetId === activePreset.id) return prev;
+        return {
+          ...prev,
+          lastSelectedPresetId: activePreset.id
+        };
+      });
+    }
+  }, [activePreset]);
 
   // Simulated Hardware & Settings States
   const [settings, setSettings] = useState<AppSettings>({
@@ -580,6 +609,8 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showApiKeyPrompt, setShowApiKeyPrompt] = useState<boolean>(false);
   const [showBrightnessOnboarding, setShowBrightnessOnboarding] = useState<boolean>(false);
+  const [showScanGuidancePrompt, setShowScanGuidancePrompt] = useState<boolean>(false);
+  const [dontShowGuidanceAgain, setDontShowGuidanceAgain] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1738,8 +1769,20 @@ export default function App() {
     }, 300);
   };
 
-  const handleAiScan = async () => {
+  const handleAiScan = async (force: boolean = false) => {
     if (isAiScanning) return;
+
+    if (!force) {
+      try {
+        const disabled = localStorage.getItem('lumi_disable_scan_guidance') === 'true';
+        if (!disabled) {
+          setShowScanGuidancePrompt(true);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to read scan guidance setting', e);
+      }
+    }
 
     // API verification check
     const storedProvider = localStorage.getItem('lumi_api_provider') || 'gemini';
@@ -2294,29 +2337,25 @@ export default function App() {
 
     if (viewfinderSize === 'standard') {
       return {
-        width: isExpanded 
-          ? 'min(64%, calc(min(220px, 28vh) * 0.75))' 
-          : 'min(100%, calc(min(370px, 45vh) * 0.75))',
+        width: 'min(100%, calc(min(370px, 45vh) * 0.75))',
         aspectRatio: '3/4',
-        maxHeight: isExpanded ? 'min(220px, 28vh)' : 'min(370px, 45vh)',
+        maxHeight: 'min(370px, 45vh)',
         boxShadow: baseShadow,
       };
     }
     if (viewfinderSize === 'compact') {
       return {
-        width: isExpanded 
-          ? 'min(55%, calc(min(170px, 22vh) * 0.75))' 
-          : 'min(75%, calc(min(280px, 35vh) * 0.75))',
+        width: 'min(75%, calc(min(280px, 35vh) * 0.75))',
         aspectRatio: '3/4',
-        maxHeight: isExpanded ? 'min(170px, 22vh)' : 'min(280px, 35vh)',
+        maxHeight: 'min(280px, 35vh)',
         boxShadow: baseShadow,
       };
     }
     // circle
     return {
-      width: isExpanded ? 'min(48%, min(130px, 17vh))' : 'min(60%, min(210px, 25vh))',
+      width: 'min(60%, min(210px, 25vh))',
       aspectRatio: '1/1',
-      maxHeight: isExpanded ? 'min(130px, 17vh)' : 'min(210px, 25vh)',
+      maxHeight: 'min(210px, 25vh)',
       boxShadow: baseShadow,
     };
   };
@@ -2523,7 +2562,7 @@ export default function App() {
               onAmbientDetected={handleAmbientDetected}
               simulatedScenario={simulatedScenario}
               intensityLevel={intensityLevel}
-              aiDiagnostic={isAiPanelExpanded}
+              aiDiagnostic={isAiPanelExpanded && !immersiveMode}
               isScanning={isAiScanning}
             />
           </div>
@@ -2752,24 +2791,26 @@ export default function App() {
           </div>
           
           {/* 🎛️ STANDARD FULL APP CONTROL PANEL DECK */}
-          <div className="bg-black/45 backdrop-blur-xl rounded-[24px] p-0.5 border border-white/10 shadow-2xl mx-3">
-            <PresetSelector
-              presets={FILL_LIGHT_PRESETS}
-              activePreset={activePreset}
-              onSelect={handlePresetSelect}
-              splitMode={splitMode}
-              splitPresetLeft={splitPresetLeft}
-              splitPresetRight={splitPresetRight}
-              onSelectSplitSide={handleSplitPresetSelect}
-              selectedSplitSide={selectedSplitSide}
-              isZh={isZh}
-              intensityLevel={intensityLevel}
-              onIntensityChange={(lvl) => {
-                playSound('focus');
-                setIntensityLevel(lvl);
-              }}
-            />
-          </div>
+          {!isAiPanelExpanded && (
+            <div className="bg-black/45 backdrop-blur-xl rounded-[24px] p-0.5 border border-white/10 shadow-2xl mx-3 animate-fade-in">
+              <PresetSelector
+                presets={FILL_LIGHT_PRESETS}
+                activePreset={activePreset}
+                onSelect={handlePresetSelect}
+                splitMode={splitMode}
+                splitPresetLeft={splitPresetLeft}
+                splitPresetRight={splitPresetRight}
+                onSelectSplitSide={handleSplitPresetSelect}
+                selectedSplitSide={selectedSplitSide}
+                isZh={isZh}
+                intensityLevel={intensityLevel}
+                onIntensityChange={(lvl) => {
+                  playSound('focus');
+                  setIntensityLevel(lvl);
+                }}
+              />
+            </div>
+          )}
 
         </div>
 
@@ -3251,8 +3292,8 @@ export default function App() {
               </h3>
               <p className="text-xs text-neutral-500 leading-relaxed px-1">
                 {isZh 
-                  ? '请将手机亮度调亮，以达到最佳补光效果 🌟' 
-                  : 'Please increase your phone screen brightness to achieve the ultimate fill-light effect 🌟'}
+                  ? '请将手机亮度调亮，以达到最佳补光效果。' 
+                  : 'Please increase your phone screen brightness to achieve the ultimate fill-light effect.'}
               </p>
             </div>
             <div className="w-full mt-2">
@@ -3269,6 +3310,117 @@ export default function App() {
                 {isZh ? '我知道了' : 'Got it!'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📸 AI EYE SCAN PORTRAIT GUIDANCE OVERLAY */}
+      {showScanGuidancePrompt && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-5 animate-fade-in text-sans">
+          <div className="bg-zinc-900 border border-white/10 rounded-[32px] max-w-[325px] w-full p-6 text-center shadow-2xl flex flex-col items-center gap-4.5 animate-scale-in relative overflow-hidden">
+            
+            {/* Top icon with subtle border and pulses */}
+            <div className="w-14 h-14 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 relative">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+              <div className="absolute inset-0 rounded-full border border-indigo-500/30 animate-ping opacity-30" />
+            </div>
+
+            {/* Title */}
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide mb-1">
+                {isZh ? 'Lumi AI 补光分析指南' : 'Lumi AI Scanner Advice'}
+              </h3>
+              <p className="text-[10px] text-zinc-400 tracking-normal px-2">
+                {isZh 
+                  ? '为了获得精准、高端的专属自拍肤色诊断，建议遵循以下对齐要点' 
+                  : 'To achieve optimal, celebrity-grade skin lighting correction, please check these steps first'}
+              </p>
+            </div>
+
+            {/* Structured Guidelines List */}
+            <div className="w-full bg-white/5 border border-white/5 rounded-2xl p-3.5 text-left flex flex-col gap-3">
+              <div className="flex gap-2.5 items-start">
+                <span className="text-sm leading-none pt-0.5">👤</span>
+                <div>
+                  <h4 className="text-[11.5px] font-bold text-zinc-200">
+                    {isZh ? '正脸居中对齐' : 'Face Center Alignment'}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 leading-normal mt-0.5">
+                    {isZh ? '确保面部在取景圈内完整显现，避免过偏、刘海或手部过多遮挡。' : 'Position your face in the center of the ring, ensuring clear view without hands or hair blocks.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 items-start">
+                <span className="text-sm leading-none pt-0.5">💡</span>
+                <div>
+                  <h4 className="text-[11.5px] font-bold text-zinc-200">
+                    {isZh ? '避开强烈逆光' : 'Avoid Strong Backlight'}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 leading-normal mt-0.5">
+                    {isZh ? '切勿直对日光灯或强烈背景光源，以免人脸漆黑无法精准读取色彩。' : 'Avoid standing with extreme bright direct background light which darkens your skin.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 items-start">
+                <span className="text-sm leading-none pt-0.5">📸</span>
+                <div>
+                  <h4 className="text-[11.5px] font-bold text-zinc-200">
+                    {isZh ? '配合保持静止' : 'Hold Steady for 2s'}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 leading-normal mt-0.5">
+                    {isZh ? '点击分析后，请保持视线直对镜头静止1.5秒，定格极真画质骨相。' : 'After clicking start, gaze directly into the lens and steady your device for 1.5s.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Checkbox item */}
+            <label className="flex items-center gap-2 cursor-pointer select-none group mt-0.5">
+              <input
+                type="checkbox"
+                checked={dontShowGuidanceAgain}
+                onChange={(e) => {
+                  playSound('click');
+                  setDontShowGuidanceAgain(e.target.checked);
+                }}
+                className="w-3.5 h-3.5 rounded border-white/20 bg-zinc-800 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-indigo-500"
+              />
+              <span className="text-[10.5px] text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                {isZh ? '下次不再提示 (Don\'t show again)' : 'Don\'t show again'}
+              </span>
+            </label>
+
+            {/* Action Buttons */}
+            <div className="w-full flex gap-2.5 mt-1">
+              <button
+                onClick={() => {
+                  playSound('click');
+                  setShowScanGuidancePrompt(false);
+                }}
+                className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 rounded-xl text-xs font-semibold active:scale-95 transition-all cursor-pointer border border-white/5"
+              >
+                {isZh ? '暂不分析' : 'Cancel'}
+              </button>
+
+              <button
+                onClick={() => {
+                  playSound('focus');
+                  if (dontShowGuidanceAgain) {
+                    try {
+                      localStorage.setItem('lumi_disable_scan_guidance', 'true');
+                    } catch (e) {}
+                  }
+                  setShowScanGuidancePrompt(false);
+                  handleAiScan(true); // force = true to bypass guidance check!
+                }}
+                className="flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl text-xs font-bold active:scale-95 transition-all cursor-pointer shadow-lg shadow-indigo-950/40 border-none"
+              >
+                {isZh ? '好的，开始深度分析' : 'Analyze Portrait!'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

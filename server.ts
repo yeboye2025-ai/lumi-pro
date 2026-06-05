@@ -301,6 +301,10 @@ app.post("/api/gemini/analyze", async (req, res) => {
   const isPlaceholderValue = (val: any) => {
     if (!val || typeof val !== 'string') return true;
     const v = val.trim().toLowerCase();
+    return Redenominate(v);
+  };
+
+  const Redenominate = (v: string) => {
     return (
       v === "" ||
       v.includes("placeholder") ||
@@ -308,7 +312,8 @@ app.post("/api/gemini/analyze", async (req, res) => {
       v.includes("your_key") ||
       v === "sk-xxxx" ||
       v === "ep-xxxxxxxxxxxx" ||
-      v.includes("xxxxxx")
+      v.includes("xxxxxx") ||
+      (v.startsWith("ep-") && v.includes("xxx"))
     );
   };
 
@@ -318,8 +323,15 @@ app.post("/api/gemini/analyze", async (req, res) => {
 
   const cleanModel = (model || "").trim();
   const provRaw = (provider || "gemini").toLowerCase();
+
+  // Align activeModel selection logic here to verify placeholder correctly
+  let activeModelForVerify = cleanModel;
+  if (activeModelForVerify === "gemini-2.5-flash" && provRaw !== "gemini" && provRaw !== "openrouter") {
+    activeModelForVerify = "";
+  }
+
   const isDoubao = provRaw === "doubao" || (apiEndpoint || "").toLowerCase().includes("volces.com") || (apiEndpoint || "").toLowerCase().includes("volcengine");
-  const modelToVerify = cleanModel || (isDoubao ? "ep-xxxxxxxxxxxx" : "");
+  const modelToVerify = activeModelForVerify || (isDoubao ? "ep-xxxxxxxxxxxx" : "");
 
   if (isPlaceholderValue(modelToVerify) && modelToVerify !== "") {
     const doubaoFallback = {
