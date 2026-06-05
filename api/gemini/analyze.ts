@@ -179,7 +179,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const isVision = true;
+    const isVision = supportsVision(prov, cleanModel);
 
     let resultText = "";
 
@@ -312,23 +312,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                            prov === "openrouter" ? "google/gemini-2.5-flash" :
                            prov === "siliconflow" ? "deepseek-ai/DeepSeek-V3" : "gpt-4o-mini";
 
-      const contentArray: any[] = [];
-      if (isVision) {
-        contentArray.push({ type: "text", text: promptText });
-        contentArray.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } });
-      } else {
-        contentArray.push({ type: "text", text: promptText + "\n(NOTE: Analyze based purely on sensor values since this model does not support images.)" });
-      }
-
-      let activeModel = cleanModel;
-      if (activeModel === "gemini-2.5-flash" && prov !== "gemini" && prov !== "openrouter") {
-        activeModel = ""; // Fallback to defaultModel for this specific provider
-      }
-
-      const bodyData: any = {
-        model: activeModel || defaultModel,
-        messages: [{ role: "user", content: contentArray }]
-      };
+       const contentValue = isVision 
+         ? [
+             { type: "text", text: promptText },
+             { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
+           ]
+         : promptText + "\n(NOTE: Analyze based purely on sensor values since this model does not support images.)";
+ 
+       let activeModel = cleanModel;
+       if (activeModel === "gemini-2.5-flash" && prov !== "gemini" && prov !== "openrouter") {
+         activeModel = ""; // Fallback to defaultModel for this specific provider
+       }
+ 
+       const bodyData: any = {
+         model: activeModel || defaultModel,
+         messages: [{ role: "user", content: contentValue }]
+       };
 
       if (prov !== "openrouter" && prov !== "custom" && prov !== "doubao") {
         bodyData.response_format = { type: "json_object" };

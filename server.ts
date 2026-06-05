@@ -15,10 +15,11 @@ const PORT = 3000;
 function supportsVision(provider: string, model: string): boolean {
   const p = (provider || "").toLowerCase();
   const m = (model || "").toLowerCase();
-  if (p === "deepseek") return false;
+  if (p === "deepseek" || p === "custom" || p === "doubao") return false;
   if (m.includes("deepseek-chat") || m.includes("deepseek-r1") || m.includes("deepseek-v3") || m.includes("reasoner")) {
     return false;
   }
+  if (m.includes("qwen") && !m.includes("vl") && !m.includes("vision")) return false;
   return true;
 }
 
@@ -443,7 +444,7 @@ app.post("/api/gemini/analyze", async (req, res) => {
         }
       }
     }
-    const isVision = true;
+    const isVision = supportsVision(prov, cleanModel);
 
     let resultText = "";
 
@@ -589,35 +590,22 @@ app.post("/api/gemini/analyze", async (req, res) => {
                            prov === "openrouter" ? "google/gemini-2.5-flash" :
                            prov === "siliconflow" ? "deepseek-ai/DeepSeek-V3" : "gpt-4o-mini";
 
-      const contentArray: any[] = [];
-      if (isVision) {
-        contentArray.push({
-          type: "text",
-          text: promptText
-        });
-        contentArray.push({
-          type: "image_url",
-          image_url: {
-            url: `data:image/jpeg;base64,${base64Data}`
-          }
-        });
-      } else {
-        // Text-only fallback for non-vision compatible models (like search or standard text models)
-        contentArray.push({
-          type: "text",
-          text: promptText + "\n(NOTE: Since the selected model does not support image analysis, you are analyzing based purely on sensor values and ambient preference states from the context prompt.)"
-        });
-      }
-
-      let activeModel = cleanModel;
-      if (activeModel === "gemini-2.5-flash" && prov !== "gemini" && prov !== "openrouter") {
-        activeModel = ""; // Realignment override
-      }
-
-      const bodyData: any = {
-        model: activeModel || defaultModel,
-        messages: [{ role: "user", content: contentArray }]
-      };
+       const contentValue = isVision 
+         ? [
+             { type: "text", text: promptText },
+             { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
+           ]
+         : promptText + "\n(NOTE: Since the selected model does not support image analysis, you are analyzing based purely on sensor values and ambient preference states from the context prompt.)";
+ 
+       let activeModel = cleanModel;
+       if (activeModel === "gemini-2.5-flash" && prov !== "gemini" && prov !== "openrouter") {
+         activeModel = ""; // Realignment override
+       }
+ 
+       const bodyData: any = {
+         model: activeModel || defaultModel,
+         messages: [{ role: "user", content: contentValue }]
+       };
 
       // Add json object support if supported
       if (prov !== "openrouter") {
