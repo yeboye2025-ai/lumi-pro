@@ -308,7 +308,8 @@ import {
   MessageSquare,
   Folder,
   Copy,
-  Check
+  Check,
+  Sun
 } from 'lucide-react';
 
 interface AmbientScenario {
@@ -578,6 +579,7 @@ export default function App() {
   const [shareTargetPhoto, setShareTargetPhoto] = useState<CapturedPhoto | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showApiKeyPrompt, setShowApiKeyPrompt] = useState<boolean>(false);
+  const [showBrightnessOnboarding, setShowBrightnessOnboarding] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -697,6 +699,15 @@ export default function App() {
       device: 'Simulator (iOS 16+ Web Sandbox)',
       lang: settings.language,
     });
+
+    try {
+      const shown = localStorage.getItem('lumi_brightness_onboarding_shown');
+      if (!shown) {
+        setShowBrightnessOnboarding(true);
+      }
+    } catch (e) {
+      console.error('Failed to check onboarding state', e);
+    }
   }, []);
 
   // Separate session timer to avoid repeating app_launch and interval resets
@@ -2279,27 +2290,33 @@ export default function App() {
       ? `0 0 ${shadowBlurRadius} ${15 * shadowIntensityMultiplier}px ${splitMode === 'none' ? activePreset.color : splitPresetLeft.color}a4`
       : `0 24px 60px -15px rgba(0,0,0,0.6), 0 0 ${shadowBlurRadius} ${15 * shadowIntensityMultiplier}px ${splitMode === 'none' ? activePreset.color : splitPresetLeft.color}a4`;
     
+    const isExpanded = isAiPanelExpanded;
+
     if (viewfinderSize === 'standard') {
       return {
-        width: 'min(100%, calc(min(370px, 45vh) * 0.75))',
+        width: isExpanded 
+          ? 'min(64%, calc(min(220px, 28vh) * 0.75))' 
+          : 'min(100%, calc(min(370px, 45vh) * 0.75))',
         aspectRatio: '3/4',
-        maxHeight: 'min(370px, 45vh)',
+        maxHeight: isExpanded ? 'min(220px, 28vh)' : 'min(370px, 45vh)',
         boxShadow: baseShadow,
       };
     }
     if (viewfinderSize === 'compact') {
       return {
-        width: 'min(75%, calc(min(280px, 35vh) * 0.75))',
+        width: isExpanded 
+          ? 'min(55%, calc(min(170px, 22vh) * 0.75))' 
+          : 'min(75%, calc(min(280px, 35vh) * 0.75))',
         aspectRatio: '3/4',
-        maxHeight: 'min(280px, 35vh)',
+        maxHeight: isExpanded ? 'min(170px, 22vh)' : 'min(280px, 35vh)',
         boxShadow: baseShadow,
       };
     }
     // circle
     return {
-      width: 'min(60%, min(210px, 25vh))',
+      width: isExpanded ? 'min(48%, min(130px, 17vh))' : 'min(60%, min(210px, 25vh))',
       aspectRatio: '1/1',
-      maxHeight: 'min(210px, 25vh)',
+      maxHeight: isExpanded ? 'min(130px, 17vh)' : 'min(210px, 25vh)',
       boxShadow: baseShadow,
     };
   };
@@ -2415,7 +2432,7 @@ export default function App() {
       )}
 
       {/* Main App Container */}
-      <div className="w-full max-w-[390px] h-[844px] max-h-screen my-auto mx-auto flex flex-col justify-between pt-12 pb-6 px-4 relative z-10 transition-all duration-300">
+      <div className="w-full max-w-[390px] h-screen max-h-[844px] my-auto mx-auto flex flex-col justify-between pt-6 sm:pt-10 pb-4 sm:pb-6 px-4 relative z-10 transition-all duration-300 overflow-hidden">
         
         {/* Settings modal (Bottom Drawer Sheet styled) */}
         {currentView === 'settings' && (
@@ -2548,7 +2565,7 @@ export default function App() {
               </div>
             ) : (
               /* 🎨 EXPANDED HIGH-FIDELITY ATMOSPHERE DECK */
-              <div className="w-full bg-black/45 border border-white/10 rounded-2xl p-3 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 max-h-[330px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent animate-fade-in text-sans">
+              <div className="w-full bg-black/55 border border-white/10 rounded-2xl p-3.5 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 max-h-[190px] xs:max-h-[240px] sm:max-h-[310px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent animate-fade-in text-sans select-text touch-action-pan-y overscroll-behavior-contain relative z-20">
                 
                 {/* Header: Title */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -3215,6 +3232,41 @@ export default function App() {
                 className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-500 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer select-none border-none"
               >
                 {isZh ? '取消 (Cancel)' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 USER ONBOARDING ALERT: Mobile brightness optimization prompt */}
+      {showBrightnessOnboarding && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-fade-in text-sans">
+          <div className="bg-white/95 rounded-[32px] max-w-[290px] w-full p-6 text-center shadow-2xl border border-amber-100/40 flex flex-col items-center gap-4 animate-scale-in">
+            <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner mb-0.5 animate-bounce">
+              <Sun className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-neutral-800 tracking-wide mb-2">
+                {isZh ? '最佳补光提示' : 'Optimal Glow Advice'}
+              </h3>
+              <p className="text-xs text-neutral-500 leading-relaxed px-1">
+                {isZh 
+                  ? '请将手机亮度调亮，以达到最佳补光效果 🌟' 
+                  : 'Please increase your phone screen brightness to achieve the ultimate fill-light effect 🌟'}
+              </p>
+            </div>
+            <div className="w-full mt-2">
+              <button
+                onClick={() => {
+                  playSound('shutter');
+                  try {
+                    localStorage.setItem('lumi_brightness_onboarding_shown', 'true');
+                  } catch (e) {}
+                  setShowBrightnessOnboarding(false);
+                }}
+                className="w-full py-3 bg-[#ff80a3] hover:bg-[#ff6290] active:bg-[#e65c82] text-white rounded-2xl text-xs font-bold tracking-wider active:scale-98 transition-all cursor-pointer shadow-lg shadow-pink-200/50 border-none select-none"
+              >
+                {isZh ? '我知道了' : 'Got it!'}
               </button>
             </div>
           </div>
