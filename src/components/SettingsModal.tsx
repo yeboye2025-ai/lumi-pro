@@ -113,6 +113,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       {/* Settings Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
+        {/* Language Selection */}
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-heading font-semibold tracking-wider text-[#cca0ab] uppercase block px-1">
+            {isZh ? '界面语言 (Language)' : 'Language Settings'}
+          </span>
+          <div className="bg-white rounded-2xl border border-pink-100/60 p-3.5 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Languages className="w-4 h-4 text-[#ff80a3]" />
+              <span className="text-xs font-medium text-neutral-800">
+                {isZh ? '显示语言' : 'App Language'}
+              </span>
+            </div>
+            <div className="flex items-center bg-[#fdfafb] border border-pink-50 p-0.5 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLanguage('zh')}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  isZh
+                    ? 'bg-[#ff80a3] text-white shadow-xs'
+                    : 'text-[#cca0ab] hover:text-[#ff80a3]'
+                }`}
+              >
+                简体中文
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  !isZh
+                    ? 'bg-[#ff80a3] text-white shadow-xs'
+                    : 'text-[#cca0ab] hover:text-[#ff80a3]'
+                }`}
+              >
+                English
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* AI API Configuration Section */}
         <div className="flex flex-col gap-2">
           <span className="text-[10px] font-heading font-semibold tracking-wider text-[#cca0ab] uppercase block px-1 animate-pulse">
