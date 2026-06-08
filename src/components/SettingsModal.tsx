@@ -290,6 +290,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
+                  maxLength={50}
                   placeholder={isZh ? '请输入您的 API Key' : 'Enter your API Key'}
                   className="w-full h-9 rounded-xl border border-pink-100 pl-3 pr-10 bg-[#fdfafb] text-neutral-800 text-xs focus:outline-none focus:border-[#ff80a3] transition-colors border-solid"
                 />
