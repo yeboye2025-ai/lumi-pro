@@ -2008,8 +2008,23 @@ export default function App() {
         }
         
         report = JSON.parse(cleaned);
-        if (typeof report.targetBrightness === 'string') report.targetBrightness = parseFloat(report.targetBrightness) || 0.8;
-        if (typeof report.targetSoftness === 'string') report.targetSoftness = parseFloat(report.targetSoftness) || 0.7;
+        
+        // Robust decimal scale and parsing safety to handle any float or integer (percentage) values gracefully
+        let rawBrightness = report.targetBrightness !== undefined ? report.targetBrightness : 0.80;
+        let rawSoftness = report.targetSoftness !== undefined ? report.targetSoftness : 0.70;
+        
+        let parsedB = typeof rawBrightness === 'string' ? parseFloat(rawBrightness) : Number(rawBrightness);
+        let parsedS = typeof rawSoftness === 'string' ? parseFloat(rawSoftness) : Number(rawSoftness);
+        
+        if (isNaN(parsedB)) parsedB = 0.80;
+        if (isNaN(parsedS)) parsedS = 0.70;
+        
+        // Convert to absolute 0.0 - 1.0 scale if model returned value in 0 - 100 range
+        if (parsedB > 1.0) parsedB = parsedB / 100;
+        if (parsedS > 1.0) parsedS = parsedS / 100;
+        
+        report.targetBrightness = Math.max(0.15, Math.min(1.0, parsedB));
+        report.targetSoftness = Math.max(0.15, Math.min(1.0, parsedS));
       }
 
       if (!report || typeof report !== 'object') {
@@ -2062,8 +2077,8 @@ export default function App() {
         problems: `自适应校准 (已启用本地精调模式)`,
         recommendedPresetId: fallbackPreset,
         recommendedIntensity: "normal" as any,
-        targetBrightness: preferences?.averageBrightness ? preferences.averageBrightness / 100 : 0.80,
-        targetSoftness: preferences?.averageSoftness ? preferences.averageSoftness / 100 : 0.70,
+        targetBrightness: preferences?.averageBrightness ? Math.max(0.15, Math.min(1.0, preferences.averageBrightness)) : 0.80,
+        targetSoftness: preferences?.averageSoftness ? Math.max(0.15, Math.min(1.0, preferences.averageSoftness)) : 0.70,
         reasoningZh: "✨ [Lumi 智能自适应补光] 正在使用本地智能自适应控光程序，已为您精准匹配最佳光美学方案，护航完美出片！",
         reasoningEn: "✨ [Lumi Local Calibration] Device auto-lighting triggered. Lumi auto-selected the best natural spectrum based on your ambient tone to guarantee a stunning photograph."
       };

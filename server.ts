@@ -648,12 +648,21 @@ app.post("/api/gemini/analyze", async (req, res) => {
     parsedData = JSON.parse(cleaned);
 
     // Sanity conversions on targetBrightness & targetSoftness to guarantee floats
-    if (typeof parsedData.targetBrightness === "string") {
-      parsedData.targetBrightness = parseFloat(parsedData.targetBrightness) || 0.80;
-    }
-    if (typeof parsedData.targetSoftness === "string") {
-      parsedData.targetSoftness = parseFloat(parsedData.targetSoftness) || 0.70;
-    }
+    let rawB = parsedData.targetBrightness !== undefined ? parsedData.targetBrightness : 0.80;
+    let rawS = parsedData.targetSoftness !== undefined ? parsedData.targetSoftness : 0.70;
+    
+    let parsedB = typeof rawB === "string" ? parseFloat(rawB) : Number(rawB);
+    let parsedS = typeof rawS === "string" ? parseFloat(rawS) : Number(rawS);
+    
+    if (isNaN(parsedB)) parsedB = 0.80;
+    if (isNaN(parsedS)) parsedS = 0.70;
+    
+    // Scale down if model returned 0-100 range values
+    if (parsedB > 1.0) parsedB = parsedB / 100;
+    if (parsedS > 1.0) parsedS = parsedS / 100;
+    
+    parsedData.targetBrightness = Math.max(0.15, Math.min(1.0, parsedB));
+    parsedData.targetSoftness = Math.max(0.15, Math.min(1.0, parsedS));
 
     res.json(parsedData);
 

@@ -363,12 +363,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     parsedData = JSON.parse(cleaned);
 
-    if (typeof parsedData.targetBrightness === "string") {
-      parsedData.targetBrightness = parseFloat(parsedData.targetBrightness) || 0.80;
-    }
-    if (typeof parsedData.targetSoftness === "string") {
-      parsedData.targetSoftness = parseFloat(parsedData.targetSoftness) || 0.70;
-    }
+    // Sanity conversions on targetBrightness & targetSoftness to guarantee floats
+    let rawB = parsedData.targetBrightness !== undefined ? parsedData.targetBrightness : 0.80;
+    let rawS = parsedData.targetSoftness !== undefined ? parsedData.targetSoftness : 0.70;
+    
+    let parsedB = typeof rawB === "string" ? parseFloat(rawB) : Number(rawB);
+    let parsedS = typeof rawS === "string" ? parseFloat(rawS) : Number(rawS);
+    
+    if (isNaN(parsedB)) parsedB = 0.80;
+    if (isNaN(parsedS)) parsedS = 0.70;
+    
+    // Scale down if model returned 0-100 range values
+    if (parsedB > 1.0) parsedB = parsedB / 100;
+    if (parsedS > 1.0) parsedS = parsedS / 100;
+    
+    parsedData.targetBrightness = Math.max(0.15, Math.min(1.0, parsedB));
+    parsedData.targetSoftness = Math.max(0.15, Math.min(1.0, parsedS));
 
     return res.status(200).json(parsedData);
 
