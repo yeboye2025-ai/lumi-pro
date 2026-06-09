@@ -1746,6 +1746,7 @@ export default function App() {
         photoUrl: photoUrlString,
         viewfinderSize: viewfinderSize,
         intensityLevel: intensityLevel,
+        hasAiOptimized: aiReport !== null,
       };
 
       setCapturedPhotos((prev) => {
@@ -2140,10 +2141,12 @@ export default function App() {
 
       // 1. Draw base picture with active camera filter adjustments
       ctx.save();
-      const contrastPct = 96 - (photo.softness - 0.5) * 8;
-      const saturatePct = 103 + (photo.brightness - 0.5) * 6;
+      const contrastPct = photo.hasAiOptimized ? 100 : 96 - (photo.softness - 0.5) * 8;
+      const saturatePct = photo.hasAiOptimized ? 100 : 103 + (photo.brightness - 0.5) * 6;
       const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
-      ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+      ctx.filter = photo.hasAiOptimized 
+        ? `brightness(${exposureBoost})` 
+        : `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
       ctx.drawImage(img, 0, 0, width, height);
       ctx.restore();
 
@@ -2153,7 +2156,7 @@ export default function App() {
       // 4. Premium Under-eye & shadow corrector vector glow mix-blend-overlay
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = photo.brightness * photo.softness * 0.5;
+      ctx.globalAlpha = photo.hasAiOptimized ? 0 : photo.brightness * photo.softness * 0.5;
       const eyeGrad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.65);
       eyeGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
       eyeGrad.addColorStop(0.25, 'rgba(255,255,255,0.3)');
@@ -2165,7 +2168,7 @@ export default function App() {
       // 5. Subtle skin smoothing glow halo booster mix-blend-soft-light
       ctx.save();
       ctx.globalCompositeOperation = 'soft-light';
-      ctx.globalAlpha = photo.brightness * 0.4;
+      ctx.globalAlpha = photo.hasAiOptimized ? 0 : photo.brightness * 0.4;
       const haloGrad = ctx.createLinearGradient(width * 0.8, 0, 0, height);
       haloGrad.addColorStop(0, 'rgba(255,255,255,0.4)');
       haloGrad.addColorStop(1, 'transparent');
@@ -2211,10 +2214,12 @@ export default function App() {
     });
 
     ctx.save();
-    const contrastPct = 96 - (photo.softness - 0.5) * 8;
-    const saturatePct = 103 + (photo.brightness - 0.5) * 6;
+    const contrastPct = photo.hasAiOptimized ? 100 : 96 - (photo.softness - 0.5) * 8;
+    const saturatePct = photo.hasAiOptimized ? 100 : 103 + (photo.brightness - 0.5) * 6;
     const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
-    ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+    ctx.filter = photo.hasAiOptimized 
+      ? `brightness(${exposureBoost})` 
+      : `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
     ctx.drawImage(img, 0, 0, width, height);
     ctx.restore();
 
@@ -2223,7 +2228,7 @@ export default function App() {
 
     ctx.save();
     ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = photo.brightness * photo.softness * 0.5;
+    ctx.globalAlpha = photo.hasAiOptimized ? 0 : photo.brightness * photo.softness * 0.5;
     const eyeGrad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.65);
     eyeGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
     eyeGrad.addColorStop(0.25, 'rgba(255,255,255,0.3)');
@@ -2234,7 +2239,7 @@ export default function App() {
 
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
-    ctx.globalAlpha = photo.brightness * 0.4;
+    ctx.globalAlpha = photo.hasAiOptimized ? 0 : photo.brightness * 0.4;
     const haloGrad = ctx.createLinearGradient(width * 0.8, 0, 0, height);
     haloGrad.addColorStop(0, 'rgba(255,255,255,0.4)');
     haloGrad.addColorStop(1, 'transparent');
@@ -2307,9 +2312,17 @@ export default function App() {
       intensityLvl === 'rich' ? 0.08 :
       0.16;
 
+    const exposureBoost = 1.05 + (brightnessVal - 0.5) * 0.28 + intensityModifier;
+
+    if (photo.hasAiOptimized) {
+      // Avoid applying digital image contrast/saturate adjustments
+      return {
+        filter: `brightness(${exposureBoost})`,
+      };
+    }
+
     const contrastPct = 96 - (softnessVal - 0.5) * 8;
     const saturatePct = 103 + (brightnessVal - 0.5) * 6;
-    const exposureBoost = 1.05 + (brightnessVal - 0.5) * 0.28 + intensityModifier;
 
     return {
       filter: `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`,
@@ -2458,6 +2471,7 @@ export default function App() {
                 onAmbientDetected={handleAmbientDetected}
                 simulatedScenario={simulatedScenario}
                 intensityLevel={intensityLevel}
+                hasAiOptimized={aiReport !== null}
               />
             </div>
           </div>
@@ -2564,6 +2578,7 @@ export default function App() {
               intensityLevel={intensityLevel}
               aiDiagnostic={isAiPanelExpanded && !immersiveMode}
               isScanning={isAiScanning}
+              hasAiOptimized={aiReport !== null}
             />
           </div>
         </div>

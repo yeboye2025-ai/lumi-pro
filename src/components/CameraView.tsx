@@ -40,6 +40,7 @@ interface CameraViewProps {
   intensityLevel?: 'soft' | 'normal' | 'rich' | 'studio';
   aiDiagnostic?: boolean;
   isScanning?: boolean;
+  hasAiOptimized?: boolean;
 }
 
 export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraViewProps>(({
@@ -62,6 +63,7 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
   intensityLevel = 'normal',
   aiDiagnostic = false,
   isScanning = false,
+  hasAiOptimized = false,
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -461,9 +463,17 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
       intensityLevel === 'rich' ? 0.08 :
       0.16; // Studio master continuous high key power!
 
+    const exposureBoost = 1.05 + (brightness - 0.5) * 0.28 + intensityModifier; // high illumination boost for darker environments
+
+    if (hasAiOptimized) {
+      // 一键优化自拍光线之后，不要增加滤镜或者特效 (only apply standard natural brightness/exposure boost)
+      return {
+        filter: `brightness(${exposureBoost})`,
+      };
+    }
+
     const contrastPct = 96 - (softness - 0.5) * 8; // gentle soft contrast drop for smooth skin tone integration
     const saturatePct = 103 + (brightness - 0.5) * 6; // slightly healthier lip/cheek pink balance
-    const exposureBoost = 1.05 + (brightness - 0.5) * 0.28 + intensityModifier; // high illumination boost for darker environments
     return {
       filter: `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`,
     };
@@ -531,7 +541,7 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
       id="selfie-camera-viewport"
     >
       {/* Visual Environment Simulator Overlay */}
-      {simulatedScenario && simulatedScenario !== 'none' && (
+      {simulatedScenario && simulatedScenario !== 'none' && !hasAiOptimized && (
         <div 
           className="absolute inset-0 pointer-events-none z-20 transition-all duration-700 animate-fade-in"
           style={{
@@ -575,7 +585,7 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
           <div 
             className="absolute inset-0 pointer-events-none mix-blend-screen opacity-0 transition-opacity duration-300"
             style={{
-              opacity: softness * 0.38,
+              opacity: hasAiOptimized ? 0 : softness * 0.38,
             }}
           >
             <video
@@ -604,7 +614,7 @@ export const CameraView = forwardRef<{ capture: () => Promise<string> }, CameraV
           <div 
             className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
             style={{
-              opacity: softness * 0.38,
+              opacity: hasAiOptimized ? 0 : softness * 0.38,
             }}
           >
             <img

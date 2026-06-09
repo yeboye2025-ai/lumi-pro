@@ -51,4 +51,5 @@ export interface CapturedPhoto {
   photoUrl?: string;
   viewfinderSize?: 'standard' | 'compact' | 'circle';
   intensityLevel?: 'soft' | 'normal' | 'rich' | 'studio';
+  hasAiOptimized?: boolean;
 }
