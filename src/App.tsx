@@ -620,6 +620,14 @@ export default function App() {
   };
 
   const saveAndPrunePhotos = (photos: CapturedPhoto[]): CapturedPhoto[] => {
+    if (photos.length === 0) {
+      try {
+        localStorage.removeItem('lumi_captured_photos');
+      } catch (err) {
+        console.error('Failed to remove photos from local storage', err);
+      }
+      return [];
+    }
     let listToSave = [...photos];
     let success = false;
     while (listToSave.length > 0) {
