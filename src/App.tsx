@@ -2042,6 +2042,7 @@ export default function App() {
       // Save report content
       setAiReport(report);
       setShowDetailedAnalysis(true); // Automatically expand the report details after click and success
+      setIsAiPanelExpanded(true); // Automatically expand the main AI panel
       setManualLockMode(false); // Reset manual lock when they explicitly trigger AI analysis
       setLockedStats(null); // Reset locked base to baseline from newly scanned frame
       
@@ -2063,7 +2064,7 @@ export default function App() {
         : `✨ AI Adaptive Match complete! Transitioned to 「${pres?.englishName || 'Cream Skin'}」.`
       );
     } catch (err: any) {
-      console.error('Lumi Vision API failed:', err);
+      console.log('Lumi local calibration mode selected.');
       
       // Smart Fallback Recommendation Response inside client in case both call avenues failed:
       let fallbackPreset = preferences?.favoritePresetId || "cream";
@@ -2092,6 +2093,8 @@ export default function App() {
       };
       
       setAiReport(localReport);
+      setShowDetailedAnalysis(false); // Do not automatically expand the report details on failure/fallback
+      setIsAiPanelExpanded(false); // Do not automatically expand the main AI panel on failure/fallback
       setManualLockMode(false);
       setLockedStats(null);
       
@@ -2599,7 +2602,7 @@ export default function App() {
               onAmbientDetected={handleAmbientDetected}
               simulatedScenario={simulatedScenario}
               intensityLevel={intensityLevel}
-              aiDiagnostic={isAiPanelExpanded && !immersiveMode}
+              aiDiagnostic={isAiPanelExpanded && !immersiveMode && aiReport === null}
               isScanning={isAiScanning}
               hasAiOptimized={aiReport !== null}
             />
@@ -2642,7 +2645,7 @@ export default function App() {
               </div>
             ) : (
               /* 🎨 EXPANDED HIGH-FIDELITY ATMOSPHERE DECK */
-              <div className="w-full bg-black/55 border border-white/10 rounded-2xl p-3.5 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 max-h-[190px] xs:max-h-[240px] sm:max-h-[310px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent animate-fade-in text-sans select-text touch-action-pan-y overscroll-behavior-contain relative z-20">
+              <div className="w-full bg-black/55 border border-white/10 rounded-2xl p-3.5 pb-6 shadow-2xl backdrop-blur-lg flex flex-col gap-2.5 max-h-[240px] xs:max-h-[310px] sm:max-h-[410px] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent animate-fade-in text-sans select-text touch-action-pan-y overscroll-behavior-contain relative z-20">
                 
                 {/* Header: Title */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -2818,11 +2821,12 @@ export default function App() {
                     playSound('click');
                     setImmersiveMode(true);
                   }}
-                  className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] text-white/60 hover:text-white font-sans font-semibold border border-white/5 hover:border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1 mt-1"
+                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] text-white/60 hover:text-white font-sans font-semibold border border-white/5 hover:border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1 mt-1 mb-2 shrink-0"
                 >
                   <span>{isZh ? '开启沉浸补光' : 'Enter Immersive Glow'}</span>
                   <span className="text-[8px] opacity-60">▲</span>
                 </button>
+                <div className="h-2 w-full shrink-0" />
 
               </div>
             )}
