@@ -404,21 +404,8 @@ export default function App() {
   // Primary States
   const specialPresetsList = FILL_LIGHT_PRESETS.filter(p => p.category === 'special');
   const [activePreset, setActivePreset] = useState<FillLightPreset>(() => {
-    try {
-      const saved = localStorage.getItem('lumi_user_preferences');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const lastId = parsed.lastSelectedPresetId;
-        if (lastId) {
-          const matched = FILL_LIGHT_PRESETS.find(p => p.id === lastId);
-          if (matched) return matched;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse saved preference for activePreset', e);
-    }
-    const defaultPreset = FILL_LIGHT_PRESETS.find(p => p.id === 'special_cold_white');
-    return defaultPreset || FILL_LIGHT_PRESETS[0];
+    const matched = FILL_LIGHT_PRESETS.find(p => p.id === 'special_soft_sweet');
+    return matched || FILL_LIGHT_PRESETS[0];
   });
   const [isLightSelected, setIsLightSelected] = useState<boolean>(false);
   const [immersiveMode, setImmersiveMode] = useState<boolean>(false);
@@ -501,15 +488,15 @@ export default function App() {
        if (saved) {
          const parsed = JSON.parse(saved);
          return {
-           favoritePresetId: parsed.favoritePresetId || 'cream',
-           usageCounts: parsed.usageCounts || { cream: 3, love: 1, cold: 2 },
+           favoritePresetId: parsed.favoritePresetId || 'special_soft_sweet',
+           usageCounts: parsed.usageCounts || { special_soft_sweet: 3, cream: 1, love: 1, cold: 2 },
            averageBrightness: parsed.averageBrightness ?? 0.80,
            averageSoftness: parsed.averageSoftness ?? 0.70,
            nighttimePresetId: parsed.nighttimePresetId || 'cold',
-           autoApply: parsed.autoApply ?? true,
+           autoApply: false, // Strictly false to disable background autoApply completely
            styleMode: parsed.styleMode || 'natural',
            sceneMemory: parsed.sceneMemory || {},
-           lastSelectedPresetId: parsed.lastSelectedPresetId || 'special_cold_white',
+           lastSelectedPresetId: 'special_soft_sweet', // Set default to Soft Sweet
            consecutiveCount: parsed.consecutiveCount ?? 0,
          };
        }
@@ -517,15 +504,15 @@ export default function App() {
        console.error('Failed to load user preferences', e);
     }
     return {
-       favoritePresetId: 'cream',
-       usageCounts: { cream: 2, love: 1, cold: 1 },
+       favoritePresetId: 'special_soft_sweet',
+       usageCounts: { special_soft_sweet: 2, cream: 1, love: 1, cold: 1 },
        averageBrightness: 0.80,
        averageSoftness: 0.70,
        nighttimePresetId: 'cold',
-       autoApply: true,
+       autoApply: false,
        styleMode: 'natural',
        sceneMemory: {},
-       lastSelectedPresetId: 'special_cold_white',
+       lastSelectedPresetId: 'special_soft_sweet',
        consecutiveCount: 0,
     };
   });
@@ -889,55 +876,6 @@ export default function App() {
         styleMode: preferences.styleMode
       });
       setSceneChangeScore(0);
-
-      // Verify custom personal Scene Memory cache
-      const sKey = getSceneKey(stats);
-      const saved = preferences.sceneMemory?.[sKey];
-
-      if (saved) {
-        const matchedPreset = FILL_LIGHT_PRESETS.find(p => p.id === saved.presetId);
-        if (matchedPreset) {
-          if (!manualLockMode && preferences.autoApply) {
-            setActivePreset(matchedPreset);
-            setIsLightSelected(true);
-            setBrightness(saved.brightness);
-            setSoftness(saved.softness);
-            setIntensityLevel(saved.intensityLevel || 'normal');
-          }
-          const presetName = isZh ? matchedPreset.name : matchedPreset.englishName;
-          const msg = isZh 
-            ? `✨ [AI 记忆还原] 来到新场景，自动恢复您在此环境偏爱的「${presetName}」补光`
-            : `✨ [Memory Restored] Sensed scene key! Loaded your custom "${presetName}" setup`;
-          showToast(msg);
-        }
-      } else {
-        // Cold start - autoapply the new recommendation if allowed & not manually overridden
-        const matchedPreset = FILL_LIGHT_PRESETS.find(p => p.id === recommendation.presetId);
-        if (matchedPreset) {
-          if (!manualLockMode && preferences.autoApply) {
-            setActivePreset(matchedPreset);
-            setIsLightSelected(true);
-            
-            let targetB = matchedPreset.intensity;
-            targetB = parseFloat(((targetB * 0.35) + (preferences.averageBrightness * 0.65)).toFixed(2));
-            if (targetB < 0.25) targetB = 0.25;
-            if (targetB > 1.0) targetB = 1.0;
-
-            let targetS = 0.65;
-            targetS = parseFloat(((targetS * 0.4) + (preferences.averageSoftness * 0.6)).toFixed(2));
-            if (targetS < 0.15) targetS = 0.15;
-            if (targetS > 0.95) targetS = 0.95;
-
-            setBrightness(targetB);
-            setSoftness(targetS);
-          }
-          const presetName = isZh ? matchedPreset.name : matchedPreset.englishName;
-          const msg = isZh 
-            ? `✨ [Lumi AI 智能自适应] 来到新环境，自选推荐最佳「${presetName}」`
-            : `✨ [Lumi AI Ambiance] Located new scene! Custom recommending "${presetName}" preset`;
-          showToast(msg);
-        }
-      }
     } else {
       // 2. We have a stable locked base state. Evaluate if scene has changed beyond threshold
       const score = calculateSceneChangeScore(stats, lockedStats);
@@ -953,55 +891,6 @@ export default function App() {
           styleMode: preferences.styleMode
         });
         setSceneChangeScore(0);
-
-        // Verify custom Scene Memory
-        const sKey = getSceneKey(stats);
-        const saved = preferences.sceneMemory?.[sKey];
-
-        if (saved) {
-          const matchedPreset = FILL_LIGHT_PRESETS.find(p => p.id === saved.presetId);
-          if (matchedPreset) {
-            if (!manualLockMode && preferences.autoApply) {
-              setActivePreset(matchedPreset);
-              setIsLightSelected(true);
-              setBrightness(saved.brightness);
-              setSoftness(saved.softness);
-              setIntensityLevel(saved.intensityLevel || 'normal');
-            }
-            const presetName = isZh ? matchedPreset.name : matchedPreset.englishName;
-            const msg = isZh 
-              ? `✨ [AI 记忆还原] 自拍场景已变，已自动恢复在相同场景最喜爱的「${presetName}」`
-              : `✨ [Memory Restored] Environment changed, loaded your favorite "${presetName}" setup`;
-            showToast(msg);
-          }
-        } else {
-          // Cold start - autoapply fresh recommender parameters
-          const matchedPreset = FILL_LIGHT_PRESETS.find(p => p.id === recommendation.presetId);
-          if (matchedPreset) {
-            if (!manualLockMode && preferences.autoApply) {
-              setActivePreset(matchedPreset);
-              setIsLightSelected(true);
-              
-              let targetB = matchedPreset.intensity;
-              targetB = parseFloat(((targetB * 0.35) + (preferences.averageBrightness * 0.65)).toFixed(2));
-              if (targetB < 0.25) targetB = 0.25;
-              if (targetB > 1.0) targetB = 1.0;
-
-              let targetS = 0.65;
-              targetS = parseFloat(((targetS * 0.4) + (preferences.averageSoftness * 0.6)).toFixed(2));
-              if (targetS < 0.15) targetS = 0.15;
-              if (targetS > 0.95) targetS = 0.95;
-
-              setBrightness(targetB);
-              setSoftness(targetS);
-            }
-            const presetName = isZh ? matchedPreset.name : matchedPreset.englishName;
-            const msg = isZh 
-              ? `✨ [Lumi AI 场景重估] 光线明显发生变化，重新为您推选「${presetName}」配方`
-              : `✨ [Lumi AI Scene Reset] Significant sensory shift, matching new "${presetName}" preset`;
-            showToast(msg);
-          }
-        }
       }
     }
   };
@@ -1556,38 +1445,7 @@ export default function App() {
 
   const recommendedPreset = FILL_LIGHT_PRESETS.find(p => p.id === recommendedInfo.presetId) || FILL_LIGHT_PRESETS[0];
 
-  // ⚡ Lumi AI Auto-Tune / 自动追光 effect
-  useEffect(() => {
-    if (preferences.autoApply && !manualLockMode) {
-      if (aiReport) {
-        const pres = FILL_LIGHT_PRESETS.find(p => p.id === aiReport.recommendedPresetId) || recommendedPreset;
-        setActivePreset(pres);
-        setIsLightSelected(true);
-        setBrightness(aiReport.targetBrightness);
-        setSoftness(aiReport.targetSoftness);
-        if (aiReport.recommendedIntensity) {
-          setIntensityLevel(aiReport.recommendedIntensity as any);
-        }
-      } else {
-        setActivePreset(recommendedPreset);
-        setIsLightSelected(true);
-        
-        let targetB = recommendedPreset.intensity;
-        targetB = parseFloat(((targetB * 0.35) + (preferences.averageBrightness * 0.65)).toFixed(2));
-        
-        if (targetB < 0.25) targetB = 0.25;
-        if (targetB > 1.0) targetB = 1.0;
-
-        let targetS = 0.65;
-        targetS = parseFloat(((targetS * 0.4) + (preferences.averageSoftness * 0.6)).toFixed(2));
-        if (targetS < 0.15) targetS = 0.15;
-        if (targetS > 0.95) targetS = 0.95;
-
-        setBrightness(targetB);
-        setSoftness(targetS);
-      }
-    }
-  }, [recommendedPreset.id, preferences.autoApply, aiReport, manualLockMode]);
+  // [BACKGROUND AUTO-TUNE REMOVED PER USER INTENT - PRESETS ONLY RESPOND TO MANUAL SELECTION & 'OPTIMIZE SELFIE LIGHTING']
 
   const handleApplyAiRecommendation = () => {
     playSound('focus'); // play mechanical cinematic dual-tone sound for magical feeling
@@ -2436,10 +2294,7 @@ export default function App() {
         }}
       />
 
-      {/* Shutter flash */}
-      {flashTriggered && (
-        <div className="absolute inset-0 bg-white z-[90] flex items-center justify-center pointer-events-none animate-flash-shutter" />
-      )}
+      {/* Shutter flash effect removed per user request */}
 
       {/* Aux screen monitor expansion overlay */}
       {physicalGlowActive && (
