@@ -2025,12 +2025,14 @@ export default function App() {
 
       // 1. Draw base picture with active camera filter adjustments
       ctx.save();
-      const contrastPct = photo.hasAiOptimized ? 100 : 96 - (photo.softness - 0.5) * 8;
-      const saturatePct = photo.hasAiOptimized ? 100 : 103 + (photo.brightness - 0.5) * 6;
-      const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
-      ctx.filter = photo.hasAiOptimized 
-        ? `brightness(${exposureBoost})` 
-        : `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+      if (photo.hasAiOptimized) {
+        ctx.filter = 'none'; // No digital exposure boost or contrast distortion for AI-optimized raw image
+      } else {
+        const contrastPct = 96 - (photo.softness - 0.5) * 8;
+        const saturatePct = 103 + (photo.brightness - 0.5) * 6;
+        const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
+        ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+      }
       ctx.drawImage(img, 0, 0, width, height);
       ctx.restore();
 
@@ -2098,12 +2100,14 @@ export default function App() {
     });
 
     ctx.save();
-    const contrastPct = photo.hasAiOptimized ? 100 : 96 - (photo.softness - 0.5) * 8;
-    const saturatePct = photo.hasAiOptimized ? 100 : 103 + (photo.brightness - 0.5) * 6;
-    const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
-    ctx.filter = photo.hasAiOptimized 
-      ? `brightness(${exposureBoost})` 
-      : `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+    if (photo.hasAiOptimized) {
+      ctx.filter = 'none'; // No digital exposure boost or contrast distortion for AI-optimized raw image
+    } else {
+      const contrastPct = 96 - (photo.softness - 0.5) * 8;
+      const saturatePct = 103 + (photo.brightness - 0.5) * 6;
+      const exposureBoost = 1.05 + (photo.brightness - 0.5) * 0.28;
+      ctx.filter = `contrast(${contrastPct}%) saturate(${saturatePct}%) brightness(${exposureBoost})`;
+    }
     ctx.drawImage(img, 0, 0, width, height);
     ctx.restore();
 
@@ -2186,6 +2190,13 @@ export default function App() {
 
   const getPhotoStyleFilter = (photo: any) => {
     if (!photo) return {};
+    if (photo.hasAiOptimized) {
+      // Avoid applying digital image contrast/saturate/exposure adjustments entirely for AI-optimized photos
+      return {
+        filter: 'none',
+      };
+    }
+
     const brightnessVal = photo.brightness ?? 0.8;
     const softnessVal = photo.softness ?? 0.5;
     const intensityLvl = photo.intensityLevel ?? 'normal';
@@ -2197,14 +2208,6 @@ export default function App() {
       0.16;
 
     const exposureBoost = 1.05 + (brightnessVal - 0.5) * 0.28 + intensityModifier;
-
-    if (photo.hasAiOptimized) {
-      // Avoid applying digital image contrast/saturate adjustments
-      return {
-        filter: `brightness(${exposureBoost})`,
-      };
-    }
-
     const contrastPct = 96 - (softnessVal - 0.5) * 8;
     const saturatePct = 103 + (brightnessVal - 0.5) * 6;
 
