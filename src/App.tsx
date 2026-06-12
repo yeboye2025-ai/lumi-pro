@@ -2840,7 +2840,7 @@ export default function App() {
                 />
                 
                 {/* Gentle ambient color light bounce projection overlay on photo viewer */}
-                {!showOriginal && photoToRender && (
+                {!showOriginal && photoToRender && !photoToRender.hasAiOptimized && (
                   <div 
                     className="absolute inset-0 pointer-events-none mix-blend-color transition-opacity duration-300 z-15"
                     style={{
@@ -2856,9 +2856,9 @@ export default function App() {
                     }}
                   />
                 )}
-
+                
                 {/* Subtle skin smoothing glow halo booster on photo viewer */}
-                {!showOriginal && photoToRender && (
+                {!showOriginal && photoToRender && !photoToRender.hasAiOptimized && (
                   <div 
                     className="absolute inset-0 pointer-events-none mix-blend-soft-light transition-opacity duration-500 z-12"
                     style={{
